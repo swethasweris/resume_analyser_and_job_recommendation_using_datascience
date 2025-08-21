@@ -1,0 +1,175 @@
+import React, { useState } from "react";
+
+export default function App() {
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setResult(null);
+    if (!file) {
+      setError("Please choose a resume file");
+      return;
+    }
+    const form = new FormData();
+    form.append("file", file);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/analyze", { method: "POST", body: form });
+      if (!res.ok) throw new Error("Request failed");
+      const data = await res.json();
+      setResult(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      style={{
+        fontFamily: "Inter, system-ui, Arial",
+        maxWidth: 980,
+        margin: "24px auto",
+        padding: 16,
+      }}
+    >
+      <h1>🚀 IT Career Recommender</h1>
+      <p>
+        Upload your resume (PDF/DOCX). We’ll extract skills and recommend
+        matching roles, skill gaps, and a learning path.
+      </p>
+      <form
+        onSubmit={onSubmit}
+        style={{ display: "flex", gap: 12, alignItems: "center" }}
+      >
+        <input
+          type="file"
+          accept=".pdf,.docx,.txt"
+          onChange={(e) => setFile(e.target.files?.[0])}
+        />
+        <button
+          disabled={loading}
+          type="submit"
+          style={{
+            background: "#007bff",
+            color: "#fff",
+            border: "none",
+            padding: "8px 16px",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          {loading ? "Analyzing..." : "Analyze"}
+        </button>
+      </form>
+      {error && <p style={{ color: "crimson" }}>{error}</p>}
+      {result && (
+        <div style={{ marginTop: 24 }}>
+          <section>
+            <h2>📌 Extracted Info</h2>
+            <pre
+              style={{
+                background: "#111",
+                color: "#eee",
+                padding: 12,
+                borderRadius: 8,
+                overflowX: "auto",
+              }}
+            >
+              {JSON.stringify(result.extracted, null, 2)}
+            </pre>
+          </section>
+
+          <section>
+            <h2>🎯 Top Recommendations</h2>
+            {result.recommendations.map((r, i) => (
+              <div
+                key={i}
+                style={{
+                  border: "1px solid #ccc",
+                  padding: 16,
+                  borderRadius: 10,
+                  marginBottom: 16,
+                  background: "#f9f9f9",
+                }}
+              >
+                <h3>
+                  {r.role} — <span style={{ color: "green" }}>Score: {r.score.toFixed(3)}</span>
+                </h3>
+                <p>
+                  <strong>✅ Matched:</strong>{" "}
+                  {r.matched_skills.join(", ") || "—"}
+                </p>
+                <p>
+                  <strong>❌ Missing:</strong>{" "}
+                  {r.missing_skills.join(", ") || "—"}
+                </p>
+
+                <div style={{ marginTop: 12 }}>
+                  <h4>📚 Learning Path (Flow)</h4>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {r.learning_plan.map((lp, idx) => (
+                      <React.Fragment key={idx}>
+                        <div
+                          style={{
+                            border: "2px solid #007bff",
+                            borderRadius: 12,
+                            padding: "12px 16px",
+                            background: "#eef6ff",
+                            minWidth: 160,
+                            textAlign: "center",
+                          }}
+                        >
+                          <strong>{lp.skill}</strong>
+                          <ul style={{ textAlign: "left", paddingLeft: 18 }}>
+                            {lp.steps.map((s, k) => (
+                              <li key={k}>{s}</li>
+                            ))}
+                          </ul>
+                          <div style={{ fontSize: "0.9em", marginTop: 6 }}>
+                            <em>Project:</em> {lp.project_idea}
+                          </div>
+                          <div style={{ fontSize: "0.8em", color: "#555" }}>
+                            ⏱ {lp.estimated_hours} hrs
+                          </div>
+                        </div>
+                        {idx < r.learning_plan.length - 1 && (
+                          <div style={{ fontSize: "1.5em", color: "#007bff" }}>
+                            ➡️
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+
+          <section>
+            <h2>🛤 Career Roadmap</h2>
+            <ol>
+              {result.roadmap.map((s, idx) => (
+                <li key={idx}>
+                  <strong>{s.role}</strong>: {s.focus}
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}

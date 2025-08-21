@@ -1,0 +1,6 @@
+skill,platform,course_title,link,duration_hours,level
+python,Coursera,Python for Everybody,https://coursera.org/sample,30,Beginner
+react,Udemy,React - The Complete Guide,https://udemy.com/sample,35,Intermediate
+sql,edX,Intro to SQL,https://edx.org/sample,15,Beginner
+aws,Coursera,AWS Cloud Practitioner Essentials,https://coursera.org/sample,25,Beginner
+docker,Udemy,Docker for Developers,https://udemy.com/sample,12,Beginner
