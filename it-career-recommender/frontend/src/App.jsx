@@ -5,18 +5,23 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
 
+  // Upload resume & analyze
   const onSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setResult(null);
+
     if (!file) {
       setError("Please choose a resume file");
       return;
     }
+
     const form = new FormData();
     form.append("file", file);
     setLoading(true);
+
     try {
       const res = await fetch("/api/analyze", { method: "POST", body: form });
       if (!res.ok) throw new Error("Request failed");
@@ -26,6 +31,31 @@ export default function App() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Save chosen learning path
+  const handleChoose = async (learningPath) => {
+    if (!user) {
+      // Redirect to login/signup if not logged in
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/choose-path", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ userId: user.id, path: learningPath }),
+      });
+
+      if (!res.ok) throw new Error("Failed to save learning path");
+      alert("✅ Learning path saved to your dashboard!");
+    } catch (err) {
+      alert("❌ " + err.message);
     }
   };
 
@@ -43,6 +73,8 @@ export default function App() {
         Upload your resume (PDF/DOCX). We’ll extract skills and recommend
         matching roles, skill gaps, and a learning path.
       </p>
+
+      {/* Resume Upload Form */}
       <form
         onSubmit={onSubmit}
         style={{ display: "flex", gap: 12, alignItems: "center" }}
@@ -67,9 +99,14 @@ export default function App() {
           {loading ? "Analyzing..." : "Analyze"}
         </button>
       </form>
+
+      {/* Error */}
       {error && <p style={{ color: "crimson" }}>{error}</p>}
+
+      {/* Results */}
       {result && (
         <div style={{ marginTop: 24 }}>
+          {/* Extracted Text */}
           <section>
             <h2>📌 Extracted Info</h2>
             <pre
@@ -85,6 +122,7 @@ export default function App() {
             </pre>
           </section>
 
+          {/* Recommendations */}
           <section>
             <h2>🎯 Top Recommendations</h2>
             {result.recommendations.map((r, i) => (
@@ -99,7 +137,10 @@ export default function App() {
                 }}
               >
                 <h3>
-                  {r.role} — <span style={{ color: "green" }}>Score: {r.score.toFixed(3)}</span>
+                  {r.role} —{" "}
+                  <span style={{ color: "green" }}>
+                    Score: {r.score.toFixed(3)}
+                  </span>
                 </h3>
                 <p>
                   <strong>✅ Matched:</strong>{" "}
@@ -110,6 +151,7 @@ export default function App() {
                   {r.missing_skills.join(", ") || "—"}
                 </p>
 
+                {/* Learning Path */}
                 <div style={{ marginTop: 12 }}>
                   <h4>📚 Learning Path (Flow)</h4>
                   <div
@@ -146,7 +188,12 @@ export default function App() {
                           </div>
                         </div>
                         {idx < r.learning_plan.length - 1 && (
-                          <div style={{ fontSize: "1.5em", color: "#007bff" }}>
+                          <div
+                            style={{
+                              fontSize: "1.5em",
+                              color: "#007bff",
+                            }}
+                          >
                             ➡️
                           </div>
                         )}
@@ -154,10 +201,27 @@ export default function App() {
                     ))}
                   </div>
                 </div>
+
+                {/* Choose Button */}
+                <button
+                  onClick={() => handleChoose(r.learning_plan)}
+                  style={{
+                    marginTop: 16,
+                    background: "#28a745",
+                    color: "#fff",
+                    border: "none",
+                    padding: "8px 16px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  Choose This Path
+                </button>
               </div>
             ))}
           </section>
 
+          {/* Career Roadmap */}
           <section>
             <h2>🛤 Career Roadmap</h2>
             <ol>
