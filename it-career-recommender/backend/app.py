@@ -1,6 +1,9 @@
 import re
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
+from backend.utils.auth import router as auth_router
+
+
 import uvicorn
 app = FastAPI()
 
@@ -25,9 +28,11 @@ DATA_PATH = Path(__file__).resolve().parent / "data" / "it_job_roles.csv"
 # global recommender (initialized at startup)
 recommender = None
 
-
+app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 @app.on_event("startup")
+
+
 async def _startup():
     # keep your existing startup actions (ensure_indexes, etc.)
     await ensure_indexes()
@@ -171,6 +176,34 @@ async def analyze_resume(file: UploadFile = File(...), top_k: int = 5):
         "recommendations": results,
         "roadmap": roadmap,
     }
+
+from fastapi import Form
+from typing import List
+
+@app.post("/api/hr/analyze-best")
+async def analyze_best(job_role: str = Form(...), files: List[UploadFile] = File(...)):
+    """
+    HR endpoint:
+    - Upload multiple resumes (max 5 for now)
+    - Provide job_role (string, must exist in CSV)
+    - Returns the best-matching resume for that role
+    """
+    if recommender is None:
+        return {"error": "Recommender not initialized"}
+
+    resumes = {}
+    for file in files:
+        contents = await file.read()
+        text = extract_text(file.filename, contents)
+        text = remove_bias(text)
+        resumes[file.filename] = text
+
+    try:
+        result = recommender.evaluate_resumes_for_role(resumes, job_role)
+        return result
+    except Exception as e:
+        return {"error": str(e)}
+
 
 
 

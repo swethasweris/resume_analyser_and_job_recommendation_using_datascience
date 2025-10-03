@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import os
 import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -79,3 +80,39 @@ class RoleRecommender:
     def recommend_from_text(self, text: str, experience_years: int = 0, top_k: int = 5):
         skills = extract_skills_from_text(text)   # <--- fuzzy skill extraction
         return self.recommend_roles(skills, experience_years, top_k)
+
+    # ✅ HR-specific: evaluate multiple resumes against a given job role
+    def evaluate_resumes_for_role(self, resumes: Dict[str, str], job_role: str) -> Dict[str, Any]:
+        """
+        Compare multiple resumes against a specific job role from the dataset.
+        resumes: dict {filename: extracted_text}
+        job_role: string, must match a role in CSV
+        Returns: {"best_resume": {...}}
+        """
+        # Find job role row
+        row = self.roles_df[self.roles_df["role"].str.lower() == job_role.lower()]
+        if row.empty:
+            raise ValueError(f"Job role '{job_role}' not found in dataset")
+
+        required_skills = set(row.iloc[0]["skills_list"])
+        best_resume = None
+        best_score = -1
+
+        for fname, text in resumes.items():
+            # extract skills from resume text
+            resume_skills = set(extract_skills_from_text(text))
+
+            matched = required_skills & resume_skills
+            missing = required_skills - resume_skills
+            score = len(matched) / max(1, len(required_skills))  # ratio match
+
+            if score > best_score:
+                best_score = score
+                best_resume = {
+                    "filename": os.path.basename(fname),
+                    "score": float(score),
+                    "matched_skills": sorted(list(matched)),
+                    "missing_skills": sorted(list(missing)),
+                }
+
+        return {"best_resume": best_resume}

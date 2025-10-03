@@ -6,6 +6,10 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [hrFiles, setHrFiles] = useState([]);
+const [hrJobRole, setHrJobRole] = useState("");
+const [bestResume, setBestResume] = useState(null); // new state for HR result
+
 
   // Upload resume & analyze
   const onSubmit = async (e) => {
@@ -38,7 +42,7 @@ export default function App() {
   const handleChoose = async (learningPath) => {
     if (!user) {
       // Redirect to login/signup if not logged in
-      window.location.href = "/login";
+      window.location.href = "/signup";
       return;
     }
 
@@ -234,6 +238,101 @@ export default function App() {
           </section>
         </div>
       )}
+      {/* ---------------- HR Section ---------------- */}
+<section style={{ marginTop: 48 }}>
+  <h2>HR: Upload Multiple Resumes for a Job Role</h2>
+  <form
+    onSubmit={async (e) => {
+      e.preventDefault();
+      setError(null);
+      setBestResume(null);
+
+      if (!hrFiles || hrFiles.length === 0) {
+        setError("Please upload at least one resume");
+        return;
+      }
+      if (!hrJobRole) {
+        setError("Please enter the job role");
+        return;
+      }
+
+      const form = new FormData();
+      hrFiles.forEach((f) => form.append("files", f));
+      form.append("job_role", hrJobRole);
+
+      setLoading(true);
+      try {
+        const res = await fetch("/api/hr/analyze-best", {
+          method: "POST",
+          body: form,
+        });
+        if (!res.ok) throw new Error("HR analysis failed");
+        const data = await res.json();
+        setBestResume(data.best_resume);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }}
+    style={{ display: "flex", flexDirection: "column", gap: 12 }}
+  >
+    <input
+      type="text"
+      placeholder="Enter Job Role"
+      value={hrJobRole}
+      onChange={(e) => setHrJobRole(e.target.value)}
+    />
+    <input
+      type="file"
+      accept=".pdf,.docx,.txt"
+      multiple
+      onChange={(e) => setHrFiles(Array.from(e.target.files))}
+    />
+    <button
+      type="submit"
+      disabled={loading}
+      style={{
+        background: "#6f42c1",
+        color: "#fff",
+        border: "none",
+        padding: "8px 16px",
+        borderRadius: 6,
+        cursor: "pointer",
+      }}
+    >
+      {loading ? "Processing..." : "Find Best Resume"}
+    </button>
+  </form>
+
+  {bestResume && (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 16,
+        border: "1px solid #ccc",
+        borderRadius: 8,
+        background: "#f0f8ff",
+      }}
+    >
+      <h3>🏆 Best Resume for "{hrJobRole}"</h3>
+      <p>
+        <strong>File:</strong> {bestResume.filename}
+      </p>
+      <p>
+        <strong>Score:</strong> {bestResume.score.toFixed(3)}
+      </p>
+      <p>
+        <strong>Matched Skills:</strong> {bestResume.matched_skills.join(", ")}
+      </p>
+      <p>
+        <strong>Missing Skills:</strong> {bestResume.missing_skills.join(", ")}
+      </p>
     </div>
+  )}
+</section>
+
+    </div>
+    
   );
 }

@@ -1,4 +1,3 @@
-# db.py
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -13,11 +12,6 @@ db = _client[DB_NAME]
 users = db["users"]
 selections = db["selections"]  # chosen learning paths
 
-
 async def ensure_indexes():
-    """
-    Ensure unique indexes exist for MongoDB collections.
-    Call this once on startup.
-    """
     await users.create_index("email", unique=True)
     await selections.create_index("user_id")
