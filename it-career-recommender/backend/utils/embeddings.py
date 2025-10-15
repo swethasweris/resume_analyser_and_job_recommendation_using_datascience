@@ -3,20 +3,24 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 class Embedder:
-    def __init__(self, model_name: str = None):
-        self.model_name = model_name or "sentence-transformers/all-MiniLM-L6-v2"
-        self.model = SentenceTransformer(self.model_name)
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+        from sentence_transformers import SentenceTransformer
+        self.model = SentenceTransformer(model_name)
 
     def encode(self, texts: List[str]) -> np.ndarray:
-        if not texts:
-            return np.zeros((1, 384), dtype=np.float32)
+        if not texts: return np.zeros((1, self.model.get_sentence_embedding_dimension()), dtype=np.float32)
         return self.model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
+
+    def encode_sections(self, sections: dict, weights: dict = None) -> np.ndarray:
+        # sections: {"skills": [...], "experience": [...], ...}
+        weights = weights or {k: 1.0 for k in sections.keys()}
+        combined_vec = sum(weights[k] * self.encode_mean(v) for k, v in sections.items())
+        return combined_vec / sum(weights.values())
 
     def encode_mean(self, texts: List[str]) -> np.ndarray:
         vecs = self.encode(texts)
-        if vecs.ndim == 1:
-            vecs = vecs.reshape(1, -1)
         return vecs.mean(axis=0, keepdims=True)
+
     
     # utils/embeddings.py
 def get_embedding_function():
